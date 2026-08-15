@@ -1,0 +1,70 @@
+name: Trailaris temporary consolidate 34-route data
+
+on:
+  push:
+    branches:
+      - tmp/trailaris-data-worker-20260815
+    paths:
+      - '.github/workflows/trailaris-temp-consolidate.yml'
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  consolidate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Wait for all 34 route artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 90); do
+            COUNT=$(gh api repos/${{ github.repository }}/actions/runs/31892132498/artifacts --paginate --jq '[.artifacts[] | select(.name | startswith("trailaris-") and endswith("-M1"))] | length')
+            echo "artifact_count=$COUNT"
+            if [ "$COUNT" -ge 34 ]; then exit 0; fi
+            sleep 10
+          done
+          echo 'Timed out waiting for 34 route artifacts' >&2
+          exit 1
+      - name: Download all route artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir downloaded
+          gh run download 31892132498 --repo ${{ github.repository }} --dir downloaded
+      - name: Assemble and validate exact 34-route file set
+        run: |
+          set -euo pipefail
+          mkdir -p trailaris_raw
+          find downloaded -type f -name '*_M1_normalized.csv' -exec cp {} trailaris_raw/ \;
+          find downloaded -type f -name '*_manifest.json' -exec cp {} trailaris_raw/ \;
+          python - <<'PY'
+          from pathlib import Path
+          import csv, json
+          routes = ['EURUSD','GBPUSD','USDJPY','AUDUSD','USDCAD','USDCHF','NZDUSD','EURJPY','GBPJPY','EURGBP','AUDJPY','CADJPY','GBPCHF','XAUUSD','XAGUSD','BTCUSD','ETHUSD','SOLUSD','BNBUSD','XRPUSD','US100','US500','US30','GER40','UK100','JP225','WTI','BRENT','NATGAS','V75','V50','V100','V25','V10']
+          root=Path('trailaris_raw')
+          missing=[]; summary=[]
+          for a in routes:
+              p=root/f'{a}_M1_normalized.csv'; m=root/f'{a}_manifest.json'
+              if not p.exists() or not m.exists(): missing.append(a); continue
+              meta=json.loads(m.read_text())
+              with p.open(newline='',encoding='utf-8') as f:
+                  r=csv.DictReader(f); first=next(r,None)
+                  if first is None: raise SystemExit(f'{a}: zero rows')
+              summary.append({'asset':a,'bars':meta.get('bars'),'first_ts':meta.get('first_ts'),'last_ts':meta.get('last_ts'),'bytes':p.stat().st_size,'source':meta.get('source')})
+          if missing: raise SystemExit('missing='+','.join(missing))
+          if len(list(root.glob('*_M1_normalized.csv'))) != 34: raise SystemExit('not exactly 34 normalized files')
+          (root/'FULL_34_ROUTE_MANIFEST.json').write_text(json.dumps({'route_count':34,'status':'PASS','routes':summary},indent=2))
+          print('FULL_REPLAY_INPUT_GATE=PASS')
+          print('ROUTES=34/34')
+          PY
+      - name: Upload complete 34-route materialization
+        uses: actions/upload-artifact@v4
+        with:
+          name: trailaris-34route-complete
+          path: trailaris_raw/
+          if-no-files-found: error
+          retention-days: 7
