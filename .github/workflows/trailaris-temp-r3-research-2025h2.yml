@@ -1,0 +1,38 @@
+name: Trailaris R3 cross-period research 2025H2
+on:
+  push:
+    branches: [tmp/trailaris-data-worker-20260815]
+    paths:
+      - '.github/workflows/trailaris-temp-r3-research-2025h2.yml'
+  workflow_dispatch:
+concurrency:
+  group: trailaris-r3-research-2025h2
+  cancel-in-progress: false
+jobs:
+  research:
+    strategy:
+      fail-fast: false
+      max-parallel: 8
+      matrix:
+        asset: [EURUSD,GBPUSD,USDJPY,AUDUSD,USDCAD,USDCHF,NZDUSD,EURJPY,GBPJPY,EURGBP,AUDJPY,CADJPY,GBPCHF,XAUUSD,XAGUSD,BTCUSD,ETHUSD,XRPUSD,US100,US500,US30,GER40,UK100,JP225,WTI,BRENT,NATGAS]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check numpy==2.2.6 pandas==2.3.1 websockets==12.0
+      - name: Materialize authentic 2025 research history
+        run: python tools/trailaris_data_worker_range.py "${{ matrix.asset }}" --start 2025-04-01 --end 2026-01-01 --outdir trailaris_r3_raw
+      - name: Run R3 family research on former failed holdout
+        env:
+          TRAILARIS_RAW_ROOT: trailaris_r3_raw
+        run: python tools/trailaris_r3_family_research.py "${{ matrix.asset }}" --start 2025-07-01 --end 2026-01-01 --outdir trailaris_r3_results
+      - uses: actions/upload-artifact@v4
+        with:
+          name: trailaris-r3-2025h2-${{ matrix.asset }}
+          path: |
+            trailaris_r3_results/${{ matrix.asset }}_meta.json
+            trailaris_r3_results/${{ matrix.asset }}__*.csv
+            trailaris_r3_raw/${{ matrix.asset }}_manifest.json
+          retention-days: 7
