@@ -1,0 +1,63 @@
+{
+  "version": "v0.15-R2-research-freeze",
+  "frozen_at_utc": "2026-08-15T15:54:00Z",
+  "scope_begin": "34/34 ACTIVE_IN_CYCLE",
+  "scope_end_required": "34/34 ACTIVE_IN_CYCLE",
+  "development_window": {
+    "warmup_start": "2026-01-01",
+    "entry_start": "2026-03-01",
+    "entry_end_exclusive": "2026-07-01"
+  },
+  "repair_findings": [
+    "generic compression/trailing stack has negative aggregate expectancy and is not authorized portfolio-wide",
+    "1R profit-lock behavior converts many excursions into small wins while retaining full-stop losses",
+    "two-position 1pct total open-risk implementation starves diversified full-universe opportunity capture",
+    "asset/strategy-family evidence admission is required; all routes remain active even when a mechanism is evidence-gated to zero"
+  ],
+  "frozen_execution_policies": {
+    "fixed_target_0_75R": ["AUDJPY", "USDCAD", "US100", "GER40", "UK100", "JP225", "XAUUSD", "XAGUSD"],
+    "energy_partial_runner": {
+      "routes": ["WTI", "BRENT"],
+      "partial_at_R": 1.0,
+      "partial_fraction": 0.70,
+      "runner_target_R": 2.0,
+      "runner_lock_R": 0.0,
+      "runner_lock_activation": "next_completed_M5_boundary"
+    },
+    "evidence_gated_zero_until_new_mechanism_passes": ["EURUSD", "GBPUSD", "USDJPY", "AUDUSD", "USDCHF", "NZDUSD", "EURJPY", "GBPJPY", "EURGBP", "CADJPY", "GBPCHF", "BTCUSD", "ETHUSD", "SOLUSD", "BNBUSD", "XRPUSD", "US500", "US30", "NATGAS"],
+    "tick_fidelity_zero_until_execution_valid_history": ["V75", "V50", "V100", "V25", "V10"]
+  },
+  "portfolio_risk": {
+    "risk_per_accepted_trade_current_equity": 0.001,
+    "max_total_open_risk_current_equity": 0.01,
+    "max_cluster_open_risk_current_equity": 0.004,
+    "hard_drawdown": 0.06,
+    "daily_loss_gate": -0.015,
+    "weekly_loss_gate": -0.03,
+    "compounding": "current realized shared equity at each new accepted entry",
+    "pyramiding": "OFF unless independently re-earned",
+    "simultaneous_entry_order": "deterministic asset order; no OOS-derived ranking"
+  },
+  "development_retest_100": {
+    "start_balance": 100.0,
+    "end_balance": 106.26965826020829,
+    "return_pct": 6.269658260208288,
+    "max_drawdown_pct": -1.0140669317090678,
+    "accepted_trades": 501,
+    "open_risk_budget_rejections": 77,
+    "monthly_returns_pct": {
+      "2026-03": 1.2149,
+      "2026-04": 2.9832,
+      "2026-05": 0.4150,
+      "2026-06": 1.7893
+    },
+    "weeks_ge_5pct": 0,
+    "status": "DEVELOPMENT_RETEST_PASS_ON_POSITIVE_RETURN_AND_DRAWDOWN; 5PCT_WEEKLY_TARGET_NOT_DEMONSTRATED"
+  },
+  "untouched_holdout": {
+    "warmup_start": "2025-04-01",
+    "entry_start": "2025-07-01",
+    "entry_end_exclusive": "2026-01-01",
+    "state_at_freeze": "UNFETCHED_AND_UNINSPECTED_FOR_REPAIRED_POLICY"
+  }
+}
