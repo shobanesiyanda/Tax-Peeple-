@@ -1,0 +1,29 @@
+name: Trailaris temporary warmup consolidate
+on:
+  push:
+    branches: [tmp/trailaris-data-worker-20260815]
+    paths: ['.github/workflows/trailaris-temp-warmup-consolidate.yml']
+permissions:
+  actions: read
+  contents: read
+jobs:
+  consolidate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all warmup artifacts
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: |
+          mkdir all
+          gh run download 31893385830 --repo ${{ github.repository }} --dir all
+      - name: Assemble exact 34
+        run: |
+          mkdir warmup
+          find all -type f -name '*_M1_normalized.csv' -exec cp {} warmup/ \;
+          find all -type f -name '*_manifest.json' -exec cp {} warmup/ \;
+          test "$(find warmup -name '*_M1_normalized.csv' | wc -l)" -eq 34
+      - uses: actions/upload-artifact@v4
+        with:
+          name: trailaris-warmup-34route-complete
+          path: warmup/
+          if-no-files-found: error
+          retention-days: 7
