@@ -1,0 +1,97 @@
+name: Trailaris temporary 34-route data materialization
+
+on:
+  push:
+    branches:
+      - tmp/trailaris-data-worker-20260815
+    paths:
+      - 'tools/trailaris_data_worker.py'
+      - '.github/workflows/trailaris-temp-data-worker.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  materialize:
+    name: materialize-${{ matrix.asset }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        asset:
+          - EURUSD
+          - GBPUSD
+          - USDJPY
+          - AUDUSD
+          - USDCAD
+          - USDCHF
+          - NZDUSD
+          - EURJPY
+          - GBPJPY
+          - EURGBP
+          - AUDJPY
+          - CADJPY
+          - GBPCHF
+          - XAUUSD
+          - XAGUSD
+          - BTCUSD
+          - ETHUSD
+          - SOLUSD
+          - BNBUSD
+          - XRPUSD
+          - US100
+          - US500
+          - US30
+          - GER40
+          - UK100
+          - JP225
+          - WTI
+          - BRENT
+          - NATGAS
+          - V75
+          - V50
+          - V100
+          - V25
+          - V10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install Deriv websocket dependency
+        run: python -m pip install --disable-pip-version-check websockets==12.0
+      - name: Materialize authentic target-window history
+        run: python tools/trailaris_data_worker.py "${{ matrix.asset }}" --outdir trailaris_raw
+      - name: Verify non-empty normalized output
+        run: |
+          python - <<'PY'
+          import csv, json, os
+          from pathlib import Path
+          asset = os.environ['ASSET']
+          p = Path('trailaris_raw') / f'{asset}_M1_normalized.csv'
+          if not p.exists() or p.stat().st_size < 1000:
+              raise SystemExit(f'FAIL {asset}: missing/empty output')
+          with p.open(newline='', encoding='utf-8') as f:
+              r = csv.DictReader(f)
+              required={'timestamp','open','high','low','close','spread'}
+              if not required.issubset(r.fieldnames or []):
+                  raise SystemExit(f'FAIL {asset}: schema {r.fieldnames}')
+              first=next(r,None)
+              if not first:
+                  raise SystemExit(f'FAIL {asset}: zero rows')
+          m=json.loads((Path('trailaris_raw')/f'{asset}_manifest.json').read_text())
+          if int(m.get('bars',0)) <= 0:
+              raise SystemExit(f'FAIL {asset}: manifest bars=0')
+          print('PASS',asset,m['bars'],m.get('first_ts'),m.get('last_ts'),p.stat().st_size)
+          PY
+        env:
+          ASSET: ${{ matrix.asset }}
+      - name: Upload normalized history
+        uses: actions/upload-artifact@v4
+        with:
+          name: trailaris-${{ matrix.asset }}-M1
+          path: trailaris_raw/
+          if-no-files-found: error
+          retention-days: 7
