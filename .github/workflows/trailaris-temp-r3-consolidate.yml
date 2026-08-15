@@ -1,0 +1,34 @@
+name: Trailaris R3 consolidate research artifacts
+on:
+  push:
+    branches: [tmp/trailaris-data-worker-20260815]
+    paths:
+      - '.github/workflows/trailaris-temp-r3-consolidate.yml'
+  workflow_dispatch:
+concurrency:
+  group: trailaris-r3-consolidate
+  cancel-in-progress: false
+jobs:
+  consolidate:
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Wait for R3 cross-period research
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh run watch 31895309512 --exit-status
+      - name: Download all R3 artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p combined
+          gh run download 31895309512 -D combined
+          find combined -type f | sort
+      - uses: actions/upload-artifact@v4
+        with:
+          name: trailaris-r3-2025h2-complete
+          path: combined
+          retention-days: 7
