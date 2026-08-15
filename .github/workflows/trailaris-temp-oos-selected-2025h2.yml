@@ -1,0 +1,38 @@
+name: Trailaris OOS selected mechanisms 2025H2
+on:
+  push:
+    branches: [tmp/trailaris-data-worker-20260815]
+    paths:
+      - '.github/workflows/trailaris-temp-oos-selected-2025h2.yml'
+  workflow_dispatch:
+concurrency:
+  group: trailaris-oos-selected-2025h2
+  cancel-in-progress: false
+jobs:
+  oos:
+    strategy:
+      fail-fast: false
+      max-parallel: 5
+      matrix:
+        asset: [AUDJPY,USDCAD,US100,GER40,UK100,JP225,XAUUSD,XAGUSD,WTI,BRENT]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check numpy==2.2.6 pandas==2.3.1 websockets==12.0
+      - name: Materialize authentic warmup plus untouched holdout
+        run: python tools/trailaris_data_worker_range.py "${{ matrix.asset }}" --start 2025-04-01 --end 2026-01-01 --outdir trailaris_oos_raw
+      - name: Run frozen repaired policy
+        env:
+          TRAILARIS_RAW_ROOT: trailaris_oos_raw
+        run: python tools/trailaris_oos_frozen_worker.py "${{ matrix.asset }}" --entry-start 2025-07-01 --entry-end 2026-01-01 --outdir trailaris_oos_results
+      - uses: actions/upload-artifact@v4
+        with:
+          name: trailaris-oos-selected-${{ matrix.asset }}
+          path: |
+            trailaris_oos_results/${{ matrix.asset }}_trades.csv
+            trailaris_oos_results/${{ matrix.asset }}_meta.json
+            trailaris_oos_raw/${{ matrix.asset }}_manifest.json
+          retention-days: 7
