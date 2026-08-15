@@ -1,0 +1,28 @@
+name: Trailaris temporary Jan-May 2026 warmup
+on:
+  push:
+    branches: [tmp/trailaris-data-worker-20260815]
+    paths: ['.github/workflows/trailaris-temp-range-2026-warmup.yml']
+permissions:
+  contents: read
+jobs:
+  materialize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      max-parallel: 6
+      matrix:
+        asset: [EURUSD,GBPUSD,USDJPY,AUDUSD,USDCAD,USDCHF,NZDUSD,EURJPY,GBPJPY,EURGBP,AUDJPY,CADJPY,GBPCHF,XAUUSD,XAGUSD,BTCUSD,ETHUSD,SOLUSD,BNBUSD,XRPUSD,US100,US500,US30,GER40,UK100,JP225,WTI,BRENT,NATGAS,V75,V50,V100,V25,V10]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: python -m pip install --disable-pip-version-check websockets==12.0
+      - run: python tools/trailaris_data_worker_range.py "${{ matrix.asset }}" --start 2026-01-01 --end 2026-05-04 --outdir trailaris_range
+      - uses: actions/upload-artifact@v4
+        with:
+          name: trailaris-warmup-${{ matrix.asset }}
+          path: trailaris_range/
+          if-no-files-found: error
+          retention-days: 7
